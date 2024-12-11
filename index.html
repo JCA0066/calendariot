@@ -1,0 +1,297 @@
+</h1>Calendario L
+<CALENDARIO F>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario de Turnos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .day {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        .header {
+            font-weight: bold;
+            background-color: #f4f4f4;
+        }
+        .work-morning {
+            background-color: #c8e6c9;
+        }
+        .work-afternoon {
+            background-color: #ffccbc;
+        }
+        .rest {
+            background-color: #bbdefb;
+        }
+        .holiday {
+            background-color: #ffe082;
+        }
+        .holiday-work {
+            background-color: #ffab91;
+        }
+        .holiday-d {
+            background-color: #d1c4e9;
+        }
+        .hours {
+            background-color: #b2ebf2;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Calendario de Turnos</h1>
+    <div class="controls">
+        <label for="year">Año:</label>
+        <input type="number" id="year" value="2024">
+
+        <label for="month">Mes:</label>
+        <select id="month">
+            <option value="0">Enero</option>
+            <option value="1">Febrero</option>
+            <option value="2">Marzo</option>
+            <option value="3">Abril</option>
+            <option value="4">Mayo</option>
+            <option value="5">Junio</option>
+            <option value="6">Julio</option>
+            <option value="7">Agosto</option>
+            <option value="8">Septiembre</option>
+            <option value="9">Octubre</option>
+            <option value="10">Noviembre</option>
+            <option value="11">Diciembre</option>
+        </select>
+
+        <label for="day">Día:</label>
+        <input type="number" id="day" min="1" max="31">
+
+        <label for="type">Tipo:</label>
+        <select id="type">
+            <option value="work-morning">Turno Mañana</option>
+            <option value="work-afternoon">Turno Tarde</option>
+            <option value="rest">Descanso</option>
+            <option value="holiday">Festivo</option>
+            <option value="holiday-work">Festivo Trabajado</option>
+            <option value="holiday-d">Festivo D</option>
+            <option value="hours">Horas Acumuladas</option>
+        </select>
+
+        <label for="hours">Horas:</label>
+        <input type="number" id="hours" min="0" value="0">
+
+        <button onclick="addEvent()">Añadir</button>
+        <button onclick="deleteEvent()">Borrar Día</button>
+        <button onclick="renderCalendar()">Actualizar Calendario</button>
+    </div>
+
+    <div id="calendar" class="calendar"></div>
+
+    <h2>Resumen</h2>
+    <p id="summary"></p>
+
+    <script>
+        const eventsKey = 'calendarEvents';
+        let events = loadEvents();
+        let totalHours = 0;
+
+        function addEvent() {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            const day = document.getElementById('day').value;
+            const type = document.getElementById('type').value;
+            const hours = parseInt(document.getElementById('hours').value);
+
+            if (!day || day < 1 || day > 31) {
+                alert('Por favor, ingresa un día válido.');
+                return;
+            }
+
+            const dateKey = `${year}-${month}-${day}`;
+            events[dateKey] = { type, hours };
+
+            saveEvents();
+        }
+
+        function deleteEvent() {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            const day = document.getElementById('day').value;
+
+            if (!day || day < 1 || day > 31) {
+                alert('Por favor, ingresa un día válido para borrar.');
+                return;
+            }
+
+            const dateKey = `${year}-${month}-${day}`;
+            if (events[dateKey]) {
+                delete events[dateKey];
+                saveEvents();
+                renderCalendar();
+                alert('El evento ha sido borrado.');
+            } else {
+                alert('No hay evento para borrar en esa fecha.');
+            }
+        }
+
+        function renderCalendar() {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            const calendar = document.getElementById('calendar');
+
+            calendar.innerHTML = '';
+
+            const daysInMonth = new Date(year, parseInt(month) + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay();
+
+            // Add day headers
+            const headers = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            headers.forEach(header => {
+                const div = document.createElement('div');
+                div.className = 'day header';
+                div.textContent = header;
+                calendar.appendChild(div);
+            });
+
+            // Add blank days for the first week
+            for (let i = 0; i < firstDay; i++) {
+                const div = document.createElement('div');
+                div.className = 'day';
+                calendar.appendChild(div);
+            }
+
+            // Add days with events
+            for (let day = 1; day <= daysInMonth; day++) {
+                const div = document.createElement('div');
+                div.className = 'day';
+                const dateKey = `${year}-${month}-${day}`;
+
+                if (events[dateKey]) {
+                    div.classList.add(events[dateKey].type);
+                    div.textContent = `${day} (${events[dateKey].hours}h)`;
+                } else {
+                    div.textContent = day;
+                }
+
+                calendar.appendChild(div);
+            }
+
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const counts = {
+                'work-morning': 0,
+                'work-afternoon': 0,
+                'rest': 0,
+                'holiday': 0,
+                'holiday-work': 0,
+                'holiday-d': 0,
+                'hours': 0
+            };
+
+            totalHours = 0;
+
+            for (const dateKey in events) {
+                const event = events[dateKey];
+                counts[event.type]++;
+
+                if (event.type === 'work-morning' || event.type === 'work-afternoon' || event.type === 'holiday-work') {
+                    totalHours += event.hours;
+                }
+            }
+
+            summary.textContent = `Turnos Mañana: ${counts['work-morning']}, Turnos Tarde: ${counts['work-afternoon']}, Descansos: ${counts['rest']}, Festivos: ${counts['holiday']}, Festivos Trabajados: ${counts['holiday-work']}, Festivos D: ${counts['holiday-d']}, Horas Acumuladas: ${totalHours}`;
+        }
+
+        function saveEvents() {
+            localStorage.setItem(eventsKey, JSON.stringify(events));
+        }
+
+        function loadEvents() {
+            const storedEvents = localStorage.getItem(eventsKey);
+            return storedEvents ? JSON.parse(storedEvents) : {};
+        }
+
+        // Render the initial calendar
+        renderCalendar();
+    </script>
+</body>
+</html>
+<h2>Resumen</h2>
+<div id="summary">
+    <p><span class="color-box work-morning"></span> Turnos Mañana: <span id="work-morning-count">0</span></p>
+    <p><span class="color-box work-afternoon"></span> Turnos Tarde: <span id="work-afternoon-count">0</span></p>
+    <p><span class="color-box rest"></span> Descansos: <span id="rest-count">0</span></p>
+    <p><span class="color-box holiday"></span> Festivos: <span id="holiday-count">0</span></p>
+    <p><span class="color-box holiday-work"></span> Festivos Trabajados: <span id="holiday-work-count">0</span></p>
+    <p><span class="color-box holiday-d"></span> Festivos D: <span id="holiday-d-count">0</span></p>
+    <p><span class="color-box hours"></span> Horas Acumuladas: <span id="total-hours">0</span></p>
+</div>
+
+<style>
+    .color-box {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        vertical-align: middle;
+        border: 1px solid #ccc;
+    }
+    .work-morning { background-color: #c8e6c9; }
+    .work-afternoon { background-color: #ffccbc; }
+    .rest { background-color: #bbdefb; }
+    .holiday { background-color: #ffe082; }
+    .holiday-work { background-color: #ffab91; }
+    .holiday-d { background-color: #d1c4e9; }
+    .hours { background-color: #b2ebf2; }
+</style>
+
+<script>
+function updateSummary() {
+    const counts = {
+        'work-morning': 0,
+        'work-afternoon': 0,
+        'rest': 0,
+        'holiday': 0,
+        'holiday-work': 0,
+        'holiday-d': 0,
+        'hours': 0
+    };
+
+    totalHours = 0;
+
+    const year = document.getElementById('year').value;
+    const month = document.getElementById('month').value;
+
+    for (const dateKey in events) {
+        const [eventYear, eventMonth] = dateKey.split('-');
+        if (eventYear === year && eventMonth === month) {
+            const event = events[dateKey];
+            counts[event.type]++;
+
+            if (event.type === 'work-morning' || event.type === 'work-afternoon' || event.type === 'holiday-work') {
+                totalHours += event.hours;
+            }
+        }
+    }
+
+    document.getElementById('work-morning-count').textContent = counts['work-morning'];
+    document.getElementById('work-afternoon-count').textContent = counts['work-afternoon'];
+    document.getElementById('rest-count').textContent = counts['rest'];
+    document.getElementById('holiday-count').textContent = counts['holiday'];
+    document.getElementById('holiday-work-count').textContent = counts['holiday-work'];
+    document.getElementById('holiday-d-count').textContent = counts['holiday-d'];
+    document.getElementById('total-hours').textContent = totalHours;
+}
+</script>
